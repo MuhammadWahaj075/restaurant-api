@@ -1,0 +1,255 @@
+openapi: 3.0.3
+info:
+  title: Restaurant API
+  description: >
+    CRUD API to manage restaurants. Built with AWS CDK (JavaScript),
+    AWS Lambda, Amazon API Gateway and Amazon DynamoDB.
+    (Sunday Class Task — authorization not included.)
+  version: 1.0.0
+servers:
+  - url: https://{apiId}.execute-api.{region}.amazonaws.com/prod
+    description: API Gateway "prod" stage (values printed after `cdk deploy`)
+    variables:
+      apiId:
+        default: your-api-id
+      region:
+        default: us-east-1
+
+tags:
+  - name: Restaurants
+    description: Operations on restaurant records
+
+paths:
+  /restaurants:
+    get:
+      tags: [Restaurants]
+      summary: List all restaurants
+      description: Returns every restaurant stored in DynamoDB.
+      operationId: listRestaurants
+      responses:
+        '200':
+          description: List of restaurants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    example: 2
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Restaurant'
+              example:
+                count: 2
+                items:
+                  - restaurantId: "b3f1e2b0-6c1a-4a2e-9d3b-1a2b3c4d5e6f"
+                    name: "Karachi Biryani House"
+                    cuisine: "Pakistani"
+                    address: "Tariq Road, Karachi"
+                    rating: 4.5
+                    createdAt: "2026-08-17T10:00:00.000Z"
+                    updatedAt: "2026-08-17T10:00:00.000Z"
+                  - restaurantId: "c4a2f3c1-7d2b-5b3f-8e4c-2b3c4d5e6f7a"
+                    name: "Cafe Zouq"
+                    cuisine: "Continental"
+                    address: "Clifton, Karachi"
+                    rating: 4.2
+                    createdAt: "2026-08-17T10:05:00.000Z"
+                    updatedAt: "2026-08-17T10:05:00.000Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Restaurants]
+      summary: Create a new restaurant
+      operationId: createRestaurant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantInput'
+            example:
+              name: "Karachi Biryani House"
+              cuisine: "Pakistani"
+              address: "Tariq Road, Karachi"
+              rating: 4.5
+      responses:
+        '201':
+          description: Restaurant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+              example:
+                restaurantId: "b3f1e2b0-6c1a-4a2e-9d3b-1a2b3c4d5e6f"
+                name: "Karachi Biryani House"
+                cuisine: "Pakistani"
+                address: "Tariq Road, Karachi"
+                rating: 4.5
+                createdAt: "2026-08-17T10:00:00.000Z"
+                updatedAt: "2026-08-17T10:00:00.000Z"
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "name, cuisine and address are required"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /restaurants/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Unique restaurant ID (UUID)
+        schema:
+          type: string
+        example: "b3f1e2b0-6c1a-4a2e-9d3b-1a2b3c4d5e6f"
+
+    get:
+      tags: [Restaurants]
+      summary: Get a single restaurant by ID
+      operationId: getRestaurant
+      responses:
+        '200':
+          description: Restaurant found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Restaurants]
+      summary: Update an existing restaurant
+      description: Partial update — send only the fields you want to change.
+      operationId: updateRestaurant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantUpdateInput'
+            example:
+              rating: 4.8
+              address: "Tariq Road, Block 2, Karachi"
+      responses:
+        '200':
+          description: Restaurant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Restaurant'
+              example:
+                restaurantId: "b3f1e2b0-6c1a-4a2e-9d3b-1a2b3c4d5e6f"
+                name: "Karachi Biryani House"
+                cuisine: "Pakistani"
+                address: "Tariq Road, Block 2, Karachi"
+                rating: 4.8
+                createdAt: "2026-08-17T10:00:00.000Z"
+                updatedAt: "2026-08-17T11:15:00.000Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Restaurants]
+      summary: Delete a restaurant
+      operationId: deleteRestaurant
+      responses:
+        '204':
+          description: Restaurant deleted successfully (no content returned)
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Restaurant:
+      type: object
+      properties:
+        restaurantId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cuisine:
+          type: string
+        address:
+          type: string
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RestaurantInput:
+      type: object
+      required: [name, cuisine, address]
+      properties:
+        name:
+          type: string
+          example: "Karachi Biryani House"
+        cuisine:
+          type: string
+          example: "Pakistani"
+        address:
+          type: string
+          example: "Tariq Road, Karachi"
+        rating:
+          type: number
+          example: 4.5
+
+    RestaurantUpdateInput:
+      type: object
+      description: All fields optional — only provided fields are updated.
+      properties:
+        name:
+          type: string
+        cuisine:
+          type: string
+        address:
+          type: string
+        rating:
+          type: number
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+  responses:
+    NotFound:
+      description: Restaurant not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Restaurant b3f1e2b0-6c1a-4a2e-9d3b-1a2b3c4d5e6f not found"
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            message: "Internal server error"
